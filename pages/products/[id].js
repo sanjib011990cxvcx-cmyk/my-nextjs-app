@@ -62,54 +62,26 @@ export default function ProductDetails({ product }) {
 //
 //  SSG — Generate all product paths
 //
+
+
+
 export async function getStaticPaths() {
-  try {
-    const res = await fetch("https://fakestoreapi.com/products");
-
-    if (!res.ok) throw new Error("API failed");
-
-    const products = await res.json();
-
-    const paths = products.map((p) => ({
-      params: { id: p.id.toString() },
-    }));
-
-    return {
-      paths,
-      fallback: "blocking",
-    };
-
-  } catch (error) {
-    console.error("Paths fetch failed:", error);
-
-    return {
-      paths: [],
-      fallback: "blocking",
-    };
-  }
+  //Don't fetch API during build
+  return {
+    paths: [],
+    fallback: "blocking",
+  };
 }
 
-//
-// ✅ SSG — Fetch product data
-//
 export async function getStaticProps({ params }) {
   try {
     const res = await fetch(
       `https://fakestoreapi.com/products/${params.id}`
     );
 
-    if (!res.ok) {
-      return { notFound: true };
-    }
+    if (!res.ok) return { notFound: true };
 
-    const text = await res.text();
-
-    // prevent HTML crash
-    if (text.startsWith("<")) {
-      return { notFound: true };
-    }
-
-    const product = JSON.parse(text);
+    const product = await res.json();
 
     return {
       props: { product },
@@ -117,8 +89,7 @@ export async function getStaticProps({ params }) {
     };
 
   } catch (error) {
-    console.error("Build fetch error:", error);
-
+    console.error("Fetch failed:", error);
     return { notFound: true };
   }
 }
