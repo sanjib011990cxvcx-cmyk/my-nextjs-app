@@ -63,31 +63,62 @@ export default function ProductDetails({ product }) {
 //  SSG — Generate all product paths
 //
 export async function getStaticPaths() {
-  const res = await fetch("https://fakestoreapi.com/products");
-  const products = await res.json();
+  try {
+    const res = await fetch("https://fakestoreapi.com/products");
 
-  const paths = products.map((product) => ({
-    params: { id: product.id.toString() },
-  }));
+    if (!res.ok) throw new Error("API failed");
 
-  return {
-    paths,
-    fallback: false,
-  };
+    const products = await res.json();
+
+    const paths = products.map((p) => ({
+      params: { id: p.id.toString() },
+    }));
+
+    return {
+      paths,
+      fallback: "blocking",
+    };
+
+  } catch (error) {
+    console.error("Paths fetch failed:", error);
+
+    return {
+      paths: [],
+      fallback: "blocking",
+    };
+  }
 }
 
 //
 // ✅ SSG — Fetch product data
 //
 export async function getStaticProps({ params }) {
-  const res = await fetch(
-    `https://fakestoreapi.com/products/${params.id}`
-  );
+  try {
+    const res = await fetch(
+      `https://fakestoreapi.com/products/${params.id}`
+    );
 
-  const product = await res.json();
+    if (!res.ok) {
+      return { notFound: true };
+    }
 
-  return {
-    props: { product },
-    revalidate: 60, // optional ISR
-  };
+    const text = await res.text();
+
+    // prevent HTML crash
+    if (text.startsWith("<")) {
+      return { notFound: true };
+    }
+
+    const product = JSON.parse(text);
+
+    return {
+      props: { product },
+      revalidate: 60,
+    };
+
+  } catch (error) {
+    console.error("Build fetch error:", error);
+
+    return { notFound: true };
+  }
 }
